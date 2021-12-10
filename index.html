@@ -1,0 +1,78 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/vue@next" defer></script>
+    <script src="./vue/app.js" defer></script>
+    <title>Hello World!</title>
+  </head>
+  <body>
+    <div id="app-wrapper">
+      <!-- TITLE BAR -->
+      <div id="titlebar" class="container">
+        <div id="dragger"></div>
+        <div id="menu">
+          <button class="menu-btn" id="min-btn"></button>
+          <button class="menu-btn" id="max-btn"></button>
+          <button @click="sendToMain('close-window')" class="menu-btn close-btn"></button>
+        </div>
+      </div>
+      <!-- PROJECT CONTAINER -->
+      <div v-if="projectname !== ''" id="project-container" class="container">
+        <div :style="{position:'relative', 'z-index':2}">{{projectname}}</div>
+        <div :style="{position:'relative', 'z-index':2}">{{doneTasks}}/{{taskList.length}}</div>
+        <div id="project-progressbar" :style="projectProgress"></div>
+      </div>
+      <!-- ADD PROJECT CONTAINER -->
+      <div v-if="projectname === ''" id="add-project-container" class="container">
+        <input v-model="projectinput" id="project-input" class="ol" type="text" placeholder="add a new project" />
+        <button @click="setProjectName" id="add-project-btn" class="btn plus-ico ol"></button>
+      </div>
+      <!-- TASK CONTAINER -->
+      <div v-if="taskToggle" id="task-container" class="container">
+        <div v-for="(value,index) in taskList" class="task ol">
+          <div class="task-wrapper ol">
+            <input v-model="value.text" id="add-task-input" type="text" />
+            <!-- <div contenteditable="true" class="left-el ol">{{value.text}}</div> -->
+            <button @click="removeTaskFromList(value,index)" class="task-closer-btn btn close-btn ol"></button>
+          </div>
+          <input type="checkbox" class="right-el ol cb" v-model="value.state" />
+        </div>
+        <!-- ADD TASK CONTAINER -->
+        <div id="add-task-container" class="ol task">
+          <input v-model="taskInput" id="add-task-input" class="ol" type="text" placeholder="add a new task" />
+          <button @click="addTaskToList" id="add-task-btn" class="btn plus-ico ol"></button>
+        </div>
+      </div>
+      <!-- NOTE CONTAINER -->
+      <div v-if="noteToggle" id="note-container" class="container">
+        <textarea id="note-input" v-model="noteInput" spellcheck="false"></textarea>
+      </div>
+      <!-- DROPDOWN CONTAINER -->
+      <div v-if="projectname !== ''" id="dropdown-container" class="container">
+        <div id="dropdown-bar">
+          <div v-if="!dropdownMenuToggle" id="dropdown-text" class="ol">
+            <p>toggle additional components</p>
+          </div>
+          <div v-if="dropdownMenuToggle" id="dropdown-text" class="ol"></div>
+          <button v-if="!dropdownMenuToggle" id="dropdown-btn" class="btn down-ico ol" @click="toggleDropdownMenu"></button>
+          <button v-if="dropdownMenuToggle" id="dropdown-btn" class="btn up-ico ol" @click="toggleDropdownMenu"></button>
+        </div>
+        <!-- DROPDOWN MENU -->
+        <div v-if="dropdownMenuToggle" id="dropdown-menu">
+          <div class="task ol">
+            <div class="left-el ol">Tasks</div>
+            <input type="checkbox" class="right-el ol cb" v-model="taskToggle" />
+          </div>
+          <div class="task ol">
+            <div class="left-el ol">Notes</div>
+            <input type="checkbox" class="right-el ol cb" v-model="noteToggle" />
+          </div>
+          <div class="task ol">
+            <div class="left-el ol">Explorer</div>
+            <input type="checkbox" class="right-el ol cb" v-model="explorerToggle" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
