@@ -3,12 +3,14 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="https://unpkg.com/vue@next" defer></script>
     <script src="./vue/app.js" defer></script>
-    <title>Hello World!</title>
+    <title>TASK</title>
   </head>
   <body>
     <div id="app-wrapper">
       <!-- TITLE BAR -->
       <div id="titlebar" class="container">
+        <button @click="sendToMain('add-window')" class="menu-btn plus-ico"></button>
+        <div>docked:{{isDocked}}</div>
         <div id="dragger"></div>
         <div id="menu">
           <button class="menu-btn" id="min-btn"></button>
@@ -47,6 +49,8 @@
       <div v-if="noteToggle" id="note-container" class="container">
         <textarea id="note-input" v-model="noteInput" spellcheck="false"></textarea>
       </div>
+      <!-- EXPLORER CONTAINER -->
+      <div v-if="explorerToggle" id="explorer-container" class="container"></div>
       <!-- DROPDOWN CONTAINER -->
       <div v-if="projectname !== ''" id="dropdown-container" class="container">
         <div id="dropdown-bar">
