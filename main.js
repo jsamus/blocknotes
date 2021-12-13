@@ -4,7 +4,7 @@
 const { ipcMain, app, BrowserWindow } = require('electron')
 const path = require('path')
 
-let windows = new Set()
+let windows = []
 
 const createWindow = () => {
   // Create the browser window.
@@ -14,8 +14,8 @@ const createWindow = () => {
     minWidth: 300,
     width: 800,
     height: 61,
-    maxHeight: 61,
-    minHeight: 61,
+    // maxHeight: 61,
+    minHeight: 61,  
     maxWidth: 1000,
     webPreferences: {
       nodeIntegration: true,
@@ -23,9 +23,29 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js')
     }
   })
-  windows.add(window)
+  windowObj = {window:window,docked:false}
+  windows.push(windowObj)
   // and load the index.html of the app.
   window.loadFile('index.html')
+
+  window.on("move",()=>{
+    let otherWindows = windows.filter(win => !win.window.isFocused());
+    let [mainX,mainY] = window.getPosition()
+    // console.log(height)
+    for(let win of otherWindows){
+      let [x,y] = win.window.getPosition()
+      let width = win.window.getBounds().width
+      let height = win.window.getBounds().height
+      deltaX = mainX-x
+      deltaY = mainY-(y+height)
+      if(range(deltaX,40) && range(deltaY,20)){
+        window.webContents.send('dock-window')
+        // console.log("i can dock now!")
+      } else {
+        window.webContents.send('undock-window')
+      }
+    }
+  })
 
   // Open the DevTools.
   //window.webContents.openDevTools()
@@ -59,6 +79,10 @@ function resizeFocusedWindow(newHeight){
   window.setMinimumSize(300,newHeight);
   window.setMaximumSize(1000,newHeight);
   window.setSize(currWidth,newHeight);
+}
+
+function range(val,threshold){
+  return val > 0 && val <= threshold;
 }
 
 ipcMain.on("resize-window",(event,arg)=>{
