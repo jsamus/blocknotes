@@ -23,32 +23,54 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js')
     }
   })
-  windowObj = {window:window,docked:false}
+  let windowIndex = windows.length;
+  windowObj = {id:windowIndex,window:window,docked:false,childWindows:[]}
   windows.push(windowObj)
   // and load the index.html of the app.
   window.loadFile('index.html')
 
   window.on("move",()=>{
-    let otherWindows = windows.filter(win => !win.window.isFocused());
-    let [mainX,mainY] = window.getPosition()
-    // console.log(height)
-    for(let win of otherWindows){
-      let [x,y] = win.window.getPosition()
-      let width = win.window.getBounds().width
-      let height = win.window.getBounds().height
-      deltaX = mainX-x
-      deltaY = mainY-(y+height)
-      if(range(deltaX,40) && range(deltaY,20)){
-        window.webContents.send('dock-window')
-        // console.log("i can dock now!")
-      } else {
-        window.webContents.send('undock-window')
+    let focusedWindowObj = getFocusedWindowObj(windows);
+    if(focusedWindowObj.childWindows.length === 0 && focusedWindowObj.docked === false){
+      console.log("erster")
+      let otherWindows = windows.filter(win => !win.window.isFocused());
+      let [focusX,focusY] = window.getPosition();
+      for(let other of otherWindows){
+        let [otherX,otherY] = other.window.getPosition()
+        let otherWidth = other.window.getBounds().width
+        let otherHeight = other.window.getBounds().height
+        let deltaX = focusX-otherX
+        let deltaY = focusY-(otherY+otherHeight)
+        if(range(deltaX,40) && range(deltaY,20)){
+          window.webContents.send('dock-window')
+          window.setPosition(otherX,otherY+otherHeight+5);
+          if(!isInArray(focusedWindowObj,other.childWindows)){
+            other.childWindows.push(focusedWindowObj);
+          }
+          // console.log("i can dock now!")
+        } else {
+          removeAsChildFromParent(other.childWindows);
+          window.webContents.send('undock-window')
+        }
+      }
+    } else if(focusedWindowObj.childWindows.length > 0 && focusedWindowObj.docked === false){
+      console.log("zweiter")
+      console.log("moving childs!")
+      for(let child of focusedWindowObj.childWindows){
+        let [parentX,parentY] = focusedWindowObj.window.getPosition()
+        let parentHeight = focusedWindowObj.window.getBounds().height;
+        child.window.setPosition(parentX,parentY+parentHeight+5);
       }
     }
+    
   })
 
+  // window.on("moved"),()=>{
+  //   window.setPosition(otherX,otherY+otherHeight+5);
+  // }
+
   // Open the DevTools.
-  //window.webContents.openDevTools()
+  window.webContents.openDevTools()
 }
 
 // This method will be called when Electron has finished
@@ -82,7 +104,7 @@ function resizeFocusedWindow(newHeight){
 }
 
 function range(val,threshold){
-  return val > 0 && val <= threshold;
+  return val > -threshold && val <= threshold;
 }
 
 ipcMain.on("resize-window",(event,arg)=>{
@@ -92,5 +114,34 @@ ipcMain.on("resize-window",(event,arg)=>{
 ipcMain.on("add-window",createWindow);
 
 ipcMain.on("close-window",()=>{
-  BrowserWindow.getFocusedWindow().close();
+  BrowserWindow.getFocusedWindow().destroy();
+  let focusedWindowObj = getFocusedWindowObj(windows);
+  let otherWindows = windows.filter(win => !win.window.isFocused());
+  windows.splice(focusedWindowObj.index,1);
+  for(let other of otherWindows){
+    removeAsChildFromParent(other.childWindows);
+  }
+  
 })
+
+function getFocusedWindowObj(windows){
+  console.log(windows);
+  for(let windowObj of windows){
+    if(windowObj.window.isFocused()){
+      console.log(windowObj.childWindows.length);
+      return windowObj;
+    }
+  }
+}
+
+function removeAsChildFromParent(windows){
+  for(let [index,windowObj] of windows.entries()){
+    if(windowObj.window.isFocused()){
+      windows.splice(index,1); 
+    }
+  }
+}
+
+function isInArray(windowObj,childWindows){
+  return childWindows.some(child => child.id === windowObj.id);
+}
