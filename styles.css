@@ -249,6 +249,12 @@ p {
   font: normal 14px Verdana, sans-serif;
 }
 
+/* EXPLORER COMPONENT */
+#explorer-container {
+  height: 100px;
+  overflow: auto;
+}
+
 /*DROPDOWN COMPONENT*/
 #dropdown-container {
   display: flex;
