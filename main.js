@@ -23,18 +23,23 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js')
     }
   })
-  let windowIndex = windows.length;
-  windowObj = {id:windowIndex,window:window,docked:false,childWindows:[]}
-  windows.push(windowObj)
-  // and load the index.html of the app.
-  window.loadFile('index.html')
-
-  window.on("move",()=>{
-    let focusedWindowObj = getFocusedWindowObj(windows);
-    if(focusedWindowObj.childWindows.length === 0 && focusedWindowObj.docked === false){
-      console.log("erster")
+  let windowIndex = windows.length
+  let windowObj = {
+    id:windowIndex,
+    window:window,
+    docked:false,
+    parent:false,
+    childWindows:[],
+    translatePositionToChildWindows: function(){
+      for(let child of this.childWindows){
+        let [parentX,parentY] = this.window.getPosition()
+        let parentHeight = this.window.getBounds().height;
+        child.window.setPosition(parentX,parentY+parentHeight+5);
+      }
+    },
+    findOtherWindowInRange: function(windows){
       let otherWindows = windows.filter(win => !win.window.isFocused());
-      let [focusX,focusY] = window.getPosition();
+      let [focusX,focusY] = this.window.getPosition();
       for(let other of otherWindows){
         let [otherX,otherY] = other.window.getPosition()
         let otherWidth = other.window.getBounds().width
@@ -42,35 +47,52 @@ const createWindow = () => {
         let deltaX = focusX-otherX
         let deltaY = focusY-(otherY+otherHeight)
         if(range(deltaX,40) && range(deltaY,20)){
-          window.webContents.send('dock-window')
-          window.setPosition(otherX,otherY+otherHeight+5);
-          if(!isInArray(focusedWindowObj,other.childWindows)){
-            other.childWindows.push(focusedWindowObj);
+
+          //sends message to renderer(vue) to allow for dom reaction to docking
+          this.window.webContents.send('dock-window')
+
+          this.window.setPosition(otherX,otherY+otherHeight+5)
+
+          //adds focusedWindow to childWindows of otherWindow in range and sets otherwindow to parent
+          if(!isInArray(this,other.childWindows)){
+            other.childWindows.push(this)
+            other.parent = true
+            this.docked = true
+            this.window.setSize(other.window.getBounds().width,this.window.getBounds().height)
           }
-          // console.log("i can dock now!")
         } else {
           removeAsChildFromParent(other.childWindows);
-          window.webContents.send('undock-window')
+          if(other.childWindows.length === 0){
+            other.parent = false
+          }
+          this.docked = false;
+          this.window.webContents.send('undock-window')
         }
       }
-    } else if(focusedWindowObj.childWindows.length > 0 && focusedWindowObj.docked === false){
-      console.log("zweiter")
-      console.log("moving childs!")
-      for(let child of focusedWindowObj.childWindows){
-        let [parentX,parentY] = focusedWindowObj.window.getPosition()
-        let parentHeight = focusedWindowObj.window.getBounds().height;
-        child.window.setPosition(parentX,parentY+parentHeight+5);
-      }
+    }
+  }
+  windows.push(windowObj)
+  window.loadFile('index.html')
+
+  //resizes childwindows on manual resize of parent window
+  window.on("will-resize",(event,newBounds)=>{
+    let focusedWindowObj = getFocusedWindowObj(windows);
+    for(let childs of focusedWindowObj.childWindows){
+      childs.window.setSize(newBounds.width,childs.window.getBounds().height);
+    }
+  })
+
+  window.on("move",()=>{
+    let focusedWindowObj = getFocusedWindowObj(windows);
+    if(!focusedWindowObj.parent){
+     focusedWindowObj.findOtherWindowInRange(windows);
+    } else if(focusedWindowObj.parent){
+      focusedWindowObj.translatePositionToChildWindows();
     }
     
   })
-
-  // window.on("moved"),()=>{
-  //   window.setPosition(otherX,otherY+otherHeight+5);
-  // }
-
-  // Open the DevTools.
-  window.webContents.openDevTools()
+  
+  //window.webContents.openDevTools()
 }
 
 // This method will be called when Electron has finished
@@ -101,6 +123,8 @@ function resizeFocusedWindow(newHeight){
   window.setMinimumSize(300,newHeight);
   window.setMaximumSize(1000,newHeight);
   window.setSize(currWidth,newHeight);
+  let focusedWindowObj = getFocusedWindowObj(windows);
+  focusedWindowObj.translatePositionToChildWindows();
 }
 
 function range(val,threshold){
@@ -114,18 +138,16 @@ ipcMain.on("resize-window",(event,arg)=>{
 ipcMain.on("add-window",createWindow);
 
 ipcMain.on("close-window",()=>{
-  BrowserWindow.getFocusedWindow().destroy();
   let focusedWindowObj = getFocusedWindowObj(windows);
   let otherWindows = windows.filter(win => !win.window.isFocused());
-  windows.splice(focusedWindowObj.index,1);
+  windows.splice(focusedWindowObj.id,1);
   for(let other of otherWindows){
     removeAsChildFromParent(other.childWindows);
   }
-  
+  BrowserWindow.getFocusedWindow().destroy();
 })
 
 function getFocusedWindowObj(windows){
-  console.log(windows);
   for(let windowObj of windows){
     if(windowObj.window.isFocused()){
       console.log(windowObj.childWindows.length);
@@ -145,3 +167,4 @@ function removeAsChildFromParent(windows){
 function isInArray(windowObj,childWindows){
   return childWindows.some(child => child.id === windowObj.id);
 }
+
