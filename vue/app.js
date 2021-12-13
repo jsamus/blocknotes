@@ -6,6 +6,12 @@ function Task(text,state,index){
     this.state = state;
 }
 
+
+// ipcRenderer.on("window-docked",()=>{
+//     app.setDocked();
+//     // console.log("setting docked to true");
+// });
+
 const app = Vue.createApp({
     data(){
         return{
@@ -19,8 +25,18 @@ const app = Vue.createApp({
             explorerToggle : false,
             dropdownMenuToggle: false,
             appHeight : 0,
+            isDocked: false,
         }
     },
+    mounted() {
+        ipcRenderer.on("dock-window",()=>{
+            this.isDocked = true;
+        }),
+        ipcRenderer.on("undock-window",()=>{
+            this.isDocked = false;
+        })
+    }
+    ,
     computed:{
         doneTasks(){
             let matchingObjects = this.taskList.filter(obj => {
@@ -37,6 +53,9 @@ const app = Vue.createApp({
         }
     },
     watch:{
+        isDocked(){
+            console.log("isDocked changed!");
+        },
         projectname(){
             console.log(this.projectname);
         },
@@ -109,6 +128,9 @@ const app = Vue.createApp({
         ,
         toggleDropdownMenu(){
             this.dropdownMenuToggle = !this.dropdownMenuToggle;
+        },
+        setDocked(){
+            this.isDocked = true;
         }
     }
 });
