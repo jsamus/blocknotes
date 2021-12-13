@@ -34,9 +34,6 @@ const app = Vue.createApp({
         }),
         ipcRenderer.on("undock-window",()=>{
             this.isDocked = false;
-        }),
-        ipcRenderer.on("window-closed",()=>{
-            
         })
     }
     ,
